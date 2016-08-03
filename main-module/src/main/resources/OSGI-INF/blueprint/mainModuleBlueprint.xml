@@ -21,6 +21,8 @@
     <cm:default-properties>
       <cm:property name="elasticsearchCluster" value="opennms" />
       <cm:property name="elasticsearchUrl" value="http://localhost:9200" />
+      <cm:property name="username" value="" />
+      <cm:property name="password" value="" />
       <cm:property name="logEventDescription" value="false" />
       <cm:property name="cache_max_ttl" value="0" /> <!-- set to zero to disable TTL -->
       <cm:property name="cache_max_size" value="10000" /> <!-- set to zero to disable max size -->
@@ -57,6 +59,8 @@
 
   <bean id="restClientFactory" class="org.opennms.plugins.elasticsearch.rest.RestClientFactory">
     <argument value="${elasticsearchUrl}" />
+    <argument value="${username}" />
+    <argument value="${password}" />
   </bean>
 
 

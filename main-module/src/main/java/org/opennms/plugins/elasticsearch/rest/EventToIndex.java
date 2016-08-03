@@ -120,6 +120,7 @@ public class EventToIndex {
 			try{
 				jestClient.shutdownClient();
 			}catch (Exception e){}
+		jestClient=null;
 	}
 
 
@@ -174,7 +175,9 @@ public class EventToIndex {
 				}
 
 				alarmIndex = populateAlarmIndexBodyFromAlarmChangeEvent(event, ALARM_INDEX_NAME, ALARM_INDEX_TYPE);
-				alarmIndexresult = getJestClient().execute(alarmIndex);
+				if (alarmIndex!=null){
+					alarmIndexresult = getJestClient().execute(alarmIndex);
+				}
 
 				if(LOG.isDebugEnabled()) {
 					if (alarmIndexresult==null) {
@@ -378,7 +381,7 @@ public class EventToIndex {
 		Index index=null;
 
 		if (alarmValues.get("alarmid")==null){
-			LOG.error("No alarmid param - cannot create alarm logstash record from event content:"+ event.toString());
+			LOG.error("No alarmid param - cannot create alarm elastic search record from event content:"+ event.toString());
 		} else{
 			String id = alarmValues.get("alarmid").toString();
 
