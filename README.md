@@ -9,16 +9,17 @@ version:         1.0-SNAPSHOT
 
 ### Description
 
-This project sends opennms data to elastic search using the Jest REST library
+This project sends opennms data to elastic search using the Jest ReST library
 (https://github.com/searchbox-io/Jest)
 
 Three indexes are created; one for alarms, one for alarm change events and one for raw events.
-Alarms and alarm change events are only saved if the alarm-change-notifier plugin is also installed
-to generate alarm chagne events from the opennms alarms table/
+
+Alarms and alarm change events are only saved if the alarm-change-notifier plugin is also installed to generate alarm change events from the opennms alarms table. 
+(https://github.com/gallenc/alarm-change-notifier)
 
 ### To install in OpenNMS (Tested on OpenNMS 18.0.0)
 
-1. Add jars to opennms /lib class path
+#### 1. Add jars to opennms /lib class path
 
 download jar httpasyncclient-osgi-4.0.2.jar 
 (from http://repo1.maven.org/maven2/org/apache/httpcomponents/httpasyncclient-osgi/4.0.2/)
@@ -39,7 +40,7 @@ org.osgi.framework.system.packages.extra= ...
 ~~~~
 
 
-2. Install the plugin in karaf
+#### 2. Install the plugin in karaf
 
 EITHER
 
@@ -57,7 +58,7 @@ However if you have built on your local machine, add the local repo as follows;
 sudo vi /opt/opennms/org.ops4j.pax.url.mvn.cfg
 ~~~~
 
-change the following property to add file:/home/admin/.m2/repository@snapshots@id=localrepo 
+Change the following property to add file:/home/admin/.m2/repository@snapshots@id=localrepo 
 where /home/admin/.m2/repository is the location of local maven repository
 
 ~~~~
@@ -70,14 +71,14 @@ org.ops4j.pax.url.mvn.repositories= \
     file:/home/admin/.m2/repository@snapshots@id=localrepo
 ~~~~
 
-open karaf command prompt using
+Open the karaf command prompt using
 ~~~~
 ssh -p 8101 admin@localhost
 
 (or ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no if no host checking wanted)
 ~~~~
 
-to install the feature in karaf use
+To install the feature in karaf use
 
 ~~~~
 
