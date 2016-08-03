@@ -11,9 +11,7 @@
 		http://aries.apache.org/schemas/blueprint-ext/blueprint-ext-1.1.xsd
 ">
 
-  <!-- Generated Licence Authenticator Blueprint -->
-  <!-- for productId='opennms-es-rest/1.0-SNAPSHOT' -->
-
+  <!-- print startup message to karaf consol -->
   <bean id="sayHello" class="org.opennms.plugins.elasticsearch.rest.SayHello" destroy-method="destroyMethod">
   </bean>
 
@@ -39,9 +37,16 @@
     <property name="eventForwarder" ref="eventForwarder" />
   </bean>
 
-  <bean id="eventForwarder" class=" org.opennms.plugins.elasticsearch.rest.EventForwarderImpl">
+  <!-- <bean id="eventForwarder" class=" org.opennms.plugins.elasticsearch.rest.EventForwarderImpl"> -->
+  <!-- <property name="eventToIndex" ref="eventToIndex" /> -->
+  <!-- </bean> -->
+
+  <bean id="eventForwarder" class=" org.opennms.plugins.elasticsearch.rest.EventForwarderQueueImpl" init-method="init" destroy-method="destroy">
     <property name="eventToIndex" ref="eventToIndex" />
+    <!-- sets length of event queue for forwarding to ES -->
+    <property name="maxQueueLength" value="1000" />
   </bean>
+
 
   <bean id="nodeDataCache" class="org.opennms.plugins.elasticsearch.rest.NodeCacheImpl" init-method="init">
     <property name="nodeDao" ref="nodeDao" />
@@ -61,7 +66,5 @@
     <property name="elasticsearchCluster" value="${elasticsearchCluster}" />
     <property name="logEventDescription" value="${logEventDescription}" />
   </bean>
-
-
 
 </blueprint>

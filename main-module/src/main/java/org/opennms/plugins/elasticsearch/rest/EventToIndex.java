@@ -84,7 +84,7 @@ public class EventToIndex {
 	public void setRestClientFactory(RestClientFactory restClientFactory) {
 		this.restClientFactory = restClientFactory;
 	}
-	
+
 	/**
 	 * @return the elasticsearchCluster
 	 */
@@ -139,7 +139,7 @@ public class EventToIndex {
 			Index eventIndex=null;
 			DocumentResult alarmIndexresult=null;
 			DocumentResult eventIndexresult=null;
-			
+
 			// if alarm change notification then handle change
 			// change alarm index and add event to alarm change event index
 			if(uei.startsWith(ALARM_NOTIFICATION_UEI_STEM)) {			
@@ -175,27 +175,29 @@ public class EventToIndex {
 
 				alarmIndex = populateAlarmIndexBodyFromAlarmChangeEvent(event, ALARM_INDEX_NAME, ALARM_INDEX_TYPE);
 				alarmIndexresult = getJestClient().execute(alarmIndex);
-				
+
 				if(LOG.isDebugEnabled()) {
 					if (alarmIndexresult==null) {
-						LOG.debug("returned dresult==null");
+						LOG.debug("returned result==null");
 					} else{
-						LOG.debug("Alarm sent to es index:"+ALARM_INDEX_NAME+" type:"+ ALARM_INDEX_TYPE+" received search dresult: "+alarmIndexresult.getJsonString()
-						+ "\n   response code:" +alarmIndexresult.getResponseCode() 
-						+ "\n   error message: "+alarmIndexresult.getErrorMessage());
+						LOG.debug("Alarm sent to es index:"+ALARM_INDEX_NAME+" type:"+ ALARM_INDEX_TYPE
+								+ "\n   received search result: "+alarmIndexresult.getJsonString()
+								+ "\n   response code:" +alarmIndexresult.getResponseCode() 
+								+ "\n   error message: "+alarmIndexresult.getErrorMessage());
 					}
 				}
 
 				eventIndex = populateEventIndexBodyFromEvent(event, ALARM_EVENT_INDEX_NAME, EVENT_INDEX_TYPE);
 				eventIndexresult = getJestClient().execute(eventIndex);
-				
+
 				if(LOG.isDebugEnabled()) {
 					if (alarmIndexresult==null) {
-						LOG.debug("returned dresult==null");
+						LOG.debug("returned result==null");
 					} else{
-					LOG.debug("event sent to es index:"+ALARM_EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE+" received search dresult: "+eventIndexresult.getJsonString()
-						+ "\n   response code:" +eventIndexresult.getResponseCode() 
-						+ "\n   error message: "+eventIndexresult.getErrorMessage());
+						LOG.debug("Event sent to es index:"+ALARM_EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE
+								+ "\n   received search result: "+eventIndexresult.getJsonString()
+								+ "\n   response code:" +eventIndexresult.getResponseCode() 
+								+ "\n   error message: "+eventIndexresult.getErrorMessage());
 					}
 				}
 
@@ -203,30 +205,31 @@ public class EventToIndex {
 			} else {
 
 				// only send events to ES which are persisted to database
-				
+
 				if(event.getDbid()!=null && event.getDbid()!=0) {
 					if (LOG.isDebugEnabled()) LOG.debug("Sending Event to ES:"+event.toString());
 					// Send the event to the event forwarder
 					eventIndex = populateEventIndexBodyFromEvent(event, EVENT_INDEX_NAME, EVENT_INDEX_TYPE);
 					eventIndexresult = getJestClient().execute(eventIndex);
-					
+
 					if(LOG.isDebugEnabled()) {
 						if (eventIndexresult==null) {
-							LOG.debug("returned dresult==null");
+							LOG.debug("returned result==null");
 						} else{
-							LOG.debug("event sent to es index:"+EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE+" received search dresult: "+eventIndexresult.getJsonString()
-							+ "\n   response code:" +eventIndexresult.getResponseCode() 
-							+ "\n   error message: "+eventIndexresult.getErrorMessage());
+							LOG.debug("Event sent to es index:"+EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE
+									+ "\n   received search result: "+eventIndexresult.getJsonString()
+									+ "\n   response code:" +eventIndexresult.getResponseCode() 
+									+ "\n   error message: "+eventIndexresult.getErrorMessage());
 						}
 					}
-					
-					
+
+
 				} else {
 					if (LOG.isDebugEnabled()) LOG.debug("Not Sending Event to ES: event.getDbid()="+event.getDbid()+ " Event="+event.toString());
 				}
 
 			}
-			
+
 
 		} catch (Exception ex){
 			LOG.error("problem sending event to Elastic Search",ex);
@@ -280,15 +283,17 @@ public class EventToIndex {
 		body.put("logmsg", ( event.getLogmsg()!=null ? event.getLogmsg().getContent() : null ));
 		body.put("logmsgdest", ( event.getLogmsg()!=null ? event.getLogmsg().getDest() : null ));
 
-		body.put("nodeid", Long.toString(event.getNodeid()));
+		if(event.getNodeid()!=null){
+			body.put("nodeid", Long.toString(event.getNodeid()));
 
-		// add node details
-		if (nodeCache!=null){
-			Map nodedetails = nodeCache.getEntry(event.getNodeid());
-			for (Object key: nodedetails.keySet()){
-				String keyStr = (String) key;
-				String value = (String) nodedetails.get(key);
-				body.put(keyStr, value);
+			// add node details
+			if (nodeCache!=null){
+				Map nodedetails = nodeCache.getEntry(event.getNodeid());
+				for (Object key: nodedetails.keySet()){
+					String keyStr = (String) key;
+					String value = (String) nodedetails.get(key);
+					body.put(keyStr, value);
+				}
 			}
 		}
 

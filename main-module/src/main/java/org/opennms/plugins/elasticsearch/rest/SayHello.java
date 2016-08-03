@@ -1,12 +1,17 @@
 package org.opennms.plugins.elasticsearch.rest;
 
+/**
+ * simple class to print startup message to karaf consol
+ * @author admin
+ *
+ */
 public class SayHello {
 	public SayHello(){
 		super();
-		System.out.println("Jest Hello there 2!!!");
+		System.out.println("Hello - Elastic Search ReST Event Forwarder started");
 	}
 	
 	public void destroyMethod(){
-		System.out.println("Jest goodbye!!!");
+		System.out.println("Goodbye - Elastic Search ReST Event Forwarder stopped");
 	}
 }
