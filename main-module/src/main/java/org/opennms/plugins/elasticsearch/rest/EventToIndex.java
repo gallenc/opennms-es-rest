@@ -1,7 +1,6 @@
 package org.opennms.plugins.elasticsearch.rest;
 
 import io.searchbox.client.JestClient;
-import io.searchbox.client.JestClientFactory;
 import io.searchbox.core.DocumentResult;
 import io.searchbox.core.Index;
 
@@ -26,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class EventToIndex {
-
 
 	private static final Logger LOG = LoggerFactory.getLogger(EventToIndex.class);
 
@@ -60,6 +58,16 @@ public class EventToIndex {
 	private JestClient jestClient = null;
 
 	private RestClientFactory restClientFactory = null;
+
+	IndexNameFunction indexNameFunction = new IndexNameFunction();
+
+	public IndexNameFunction getIndexNameFunction() {
+		return indexNameFunction;
+	}
+
+	public void setIndexNameFunction(IndexNameFunction indexNameFunction) {
+		this.indexNameFunction = indexNameFunction;
+	}
 
 	public boolean isLogEventDescription() {
 		return logEventDescription;
@@ -246,7 +254,7 @@ public class EventToIndex {
 	 * @param body the map
 	 * @param event the event object
 	 */
-	public Index populateEventIndexBodyFromEvent( Event event, String indexName, String indexType) {
+	public Index populateEventIndexBodyFromEvent( Event event, String rootIndexName, String indexType) {
 
 		Map<String,String> body=new HashMap<String,String>();
 
@@ -261,6 +269,7 @@ public class EventToIndex {
 			cal.setTime(new Date());
 
 		} else 	cal.setTime(event.getCreationTime()); // javax.xml.bind.DatatypeConverter.parseDateTime("2010-01-01T12:00:00Z");
+
 
 		body.put("@timestamp", DatatypeConverter.printDateTime(cal));
 
@@ -300,8 +309,9 @@ public class EventToIndex {
 			}
 		}
 
+		String completeIndexName=indexNameFunction.apply(rootIndexName, cal.getTime());
 
-		Index index = new Index.Builder(body).index(indexName)
+		Index index = new Index.Builder(body).index(completeIndexName)
 				.type(indexType).id(id).build();
 
 		return index;
@@ -316,7 +326,7 @@ public class EventToIndex {
 	 * @param body
 	 * @param event
 	 */
-	public Index populateAlarmIndexBodyFromAlarmChangeEvent(Event event, String indexName, String indexType) {
+	public Index populateAlarmIndexBodyFromAlarmChangeEvent(Event event, String rootIndexName, String indexType) {
 
 		Map<String,String> body = new HashMap<String,String>();
 
@@ -343,7 +353,7 @@ public class EventToIndex {
 				}
 				obj = parser.parse(payload);
 				alarmValues = (JSONObject) obj;
-				LOG.debug("payload alarmvalues.toString():" + alarmValues.toString());
+				if (LOG.isDebugEnabled()) LOG.debug("payload alarmvalues.toString():" + alarmValues.toString());
 
 			} catch (ParseException e1) {
 				LOG.error("cannot parse event payload to json object. payload="+ payload, e1);
@@ -385,7 +395,25 @@ public class EventToIndex {
 		} else{
 			String id = alarmValues.get("alarmid").toString();
 
-			index = new Index.Builder(body).index(indexName)
+			Date alarmCreationDate = new Date();
+			String alarmCreationTime=null;
+			try{
+				alarmCreationTime = alarmValues.get("firsteventtime").toString();
+				Calendar alarmCreationCal = DatatypeConverter.parseDateTime(alarmCreationTime);
+				alarmCreationDate = alarmCreationCal.getTime();
+				body.put("@timestamp", DatatypeConverter.printDateTime(alarmCreationCal));
+				body.put("dow", Integer.toString(alarmCreationCal.get(Calendar.DAY_OF_WEEK)));
+				body.put("hour",Integer.toString(alarmCreationCal.get(Calendar.HOUR_OF_DAY)));
+				body.put("dom", Integer.toString(alarmCreationCal.get(Calendar.DAY_OF_MONTH))); 
+				
+			} catch (Exception e){
+				LOG.error("Problem creating date (using new Date()) from alarmchange event "+event.getDbid()
+						+ " from firsteventtime="+alarmCreationTime, e);
+			}
+
+			String completeIndexName=indexNameFunction.apply(rootIndexName, alarmCreationDate);
+
+			index = new Index.Builder(body).index(completeIndexName)
 					.type(indexType).id(id).build();
 		}
 

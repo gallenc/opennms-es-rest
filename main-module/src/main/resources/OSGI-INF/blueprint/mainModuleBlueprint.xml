@@ -69,6 +69,11 @@
     <property name="nodeCache" ref="nodeDataCache" />
     <property name="elasticsearchCluster" value="${elasticsearchCluster}" />
     <property name="logEventDescription" value="${logEventDescription}" />
+    <property name="indexNameFunction" ref="indexNameFunction" />
+  </bean>
+  
+  <bean id="indexNameFunction" class="org.opennms.plugins.elasticsearch.rest.IndexNameFunction">
+    <argument value="yyyy.MM"/>
   </bean>
 
 </blueprint>
