@@ -83,7 +83,7 @@ public class EventForwarderQueueImpl implements EventForwarder {
 	 * Class run in separate thread to remove and process notifications from the queue 
 	 */
 	private class RemovingConsumer implements Runnable {
-		final Logger LOG = LoggerFactory.getLogger(EventForwarderQueueImpl.class);
+		//TODO remove final Logger LOG = LoggerFactory.getLogger(EventForwarderQueueImpl.class);
 
 		@Override
 		public void run() {

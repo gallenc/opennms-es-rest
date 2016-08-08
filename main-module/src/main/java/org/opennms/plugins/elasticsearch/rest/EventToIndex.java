@@ -48,8 +48,8 @@ public class EventToIndex {
 	public static final String ALARM_TROUBLETICKET_STATE_CHANGE_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/TroubleTicketStateChange";
 	public static final String ALARM_CHANGED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmChanged";
 
-	private static final String OLD_ALARM_VALUES="oldalarmvalues";
-	private static final String NEW_ALARM_VALUES="oldalarmvalues";
+	public static final String OLD_ALARM_VALUES="oldalarmvalues";
+	public static final String NEW_ALARM_VALUES="newalarmvalues";
 
 	private boolean logEventDescription=false;
 	private NodeCache nodeCache=null;
@@ -265,7 +265,7 @@ public class EventToIndex {
 
 		Calendar cal=Calendar.getInstance();
 		if (event.getCreationTime()==null) {
-			if(LOG.isDebugEnabled()) LOG.debug("no event creation time for event.toString: "+ event.toString());
+			if(LOG.isDebugEnabled()) LOG.debug("using local time because no event creation time for event.toString: "+ event.toString());
 			cal.setTime(new Date());
 
 		} else 	cal.setTime(event.getCreationTime()); // javax.xml.bind.DatatypeConverter.parseDateTime("2010-01-01T12:00:00Z");
@@ -311,6 +311,18 @@ public class EventToIndex {
 
 		String completeIndexName=indexNameFunction.apply(rootIndexName, cal.getTime());
 
+		if (LOG.isDebugEnabled()){
+			String str = "populateEventIndexBodyFromEvent - index:"
+					+ "/"+completeIndexName
+					+ "/"+indexType
+					+ "/"+id
+					+ "\n   body: ";
+			for (String key:body.keySet()){
+				str=str+"["+ key+" : "+body.get(key)+"]";
+			}
+			LOG.debug(str);
+		}
+
 		Index index = new Index.Builder(body).index(completeIndexName)
 				.type(indexType).id(id).build();
 
@@ -336,31 +348,56 @@ public class EventToIndex {
 			parmsMap.put( parm.getParmName(), parm.getValue().getContent());
 		}
 
-		String oldValues=parmsMap.get(OLD_ALARM_VALUES);
-		String newValues=parmsMap.get(NEW_ALARM_VALUES);
+		String oldValuesStr=parmsMap.get(OLD_ALARM_VALUES);
+		String newValuesStr=parmsMap.get(NEW_ALARM_VALUES);
+		
+		LOG.debug("AlarmChangeEvent from eventid "+event.getDbid()
+				+ "\n  newValuesStr="+newValuesStr
+				+ "\n  oldValuesStr="+oldValuesStr);
 
-		String payload=null;
-		JSONObject alarmValues=new JSONObject() ;
-		if (newValues!=null || oldValues!=null){
-			try {
-				JSONParser parser = new JSONParser();
-				Object obj;
+		JSONObject alarmValues=null ;
+		JSONObject newAlarmValues=null;
+		JSONObject oldAlarmValues=null;
 
-				if (newValues!=null) {
-					payload = newValues;
-				} else {
-					payload = oldValues;
-				}
-				obj = parser.parse(payload);
-				alarmValues = (JSONObject) obj;
-				if (LOG.isDebugEnabled()) LOG.debug("payload alarmvalues.toString():" + alarmValues.toString());
-
+		JSONParser parser = new JSONParser();
+		if (newValuesStr!=null){
+			try{
+				Object obj = parser.parse(newValuesStr);
+				newAlarmValues = (JSONObject) obj;
 			} catch (ParseException e1) {
-				LOG.error("cannot parse event payload to json object. payload="+ payload, e1);
-				return null;
+				LOG.error("cannot parse newValuesStr from eventid "+event.getDbid()
+						+ " to json object. newValuesStr="+ newValuesStr, e1);
 			}
-
 		}
+		
+		if(newAlarmValues!=null && ! newAlarmValues.isEmpty()) {
+			alarmValues=newAlarmValues;
+		} else {
+			if (oldValuesStr==null){
+				LOG.error("newValuesStr and oldValuesStr both empty in AlarmChangeEvent from eventid "+event.getDbid()
+				+ "\n  newValuesStr="+newValuesStr
+				+ "\n  oldValuesStr="+oldValuesStr);
+				return null;
+			} else {
+				try{
+					Object obj = parser.parse(oldValuesStr);
+					oldAlarmValues = (JSONObject) obj;
+				} catch (ParseException e1) {
+					LOG.error("cannot parse oldValuesStr from eventid "+event.getDbid()
+							+ " to json object. oldValuesStr="+ oldValuesStr, e1);
+					return null;
+				}
+				if (! oldAlarmValues.isEmpty()){
+					alarmValues=oldAlarmValues;
+				} else {
+					LOG.error("oldValuesStr and newValuesStr both empty in AlarmChangeEvent from eventid "+event.getDbid()
+							+ "\n  newValuesStr="+newValuesStr
+							+ "\n  oldValuesStr="+oldValuesStr);
+					return null;
+				}
+			}
+		}
+
 
 		for (Object x: alarmValues.keySet()){
 			String key=(String) x;
@@ -395,23 +432,43 @@ public class EventToIndex {
 		} else{
 			String id = alarmValues.get("alarmid").toString();
 
-			Date alarmCreationDate = new Date();
 			String alarmCreationTime=null;
+			Date alarmCreationDate=null;
+			Calendar alarmCreationCal=null;
+
+			// try to parse firsteventtime but if not able then use current date
 			try{
 				alarmCreationTime = alarmValues.get("firsteventtime").toString();
-				Calendar alarmCreationCal = DatatypeConverter.parseDateTime(alarmCreationTime);
-				alarmCreationDate = alarmCreationCal.getTime();
-				body.put("@timestamp", DatatypeConverter.printDateTime(alarmCreationCal));
-				body.put("dow", Integer.toString(alarmCreationCal.get(Calendar.DAY_OF_WEEK)));
-				body.put("hour",Integer.toString(alarmCreationCal.get(Calendar.HOUR_OF_DAY)));
-				body.put("dom", Integer.toString(alarmCreationCal.get(Calendar.DAY_OF_MONTH))); 
-				
+				alarmCreationCal = DatatypeConverter.parseDateTime(alarmCreationTime);
 			} catch (Exception e){
-				LOG.error("Problem creating date (using new Date()) from alarmchange event "+event.getDbid()
+				LOG.error("using current Date() for @timestamp because problem creating date from alarmchange event "+event.getDbid()
 						+ " from firsteventtime="+alarmCreationTime, e);
 			}
 
+			if (alarmCreationCal==null){
+				alarmCreationCal=Calendar.getInstance();
+				alarmCreationCal.setTime(new Date());
+			}
+
+			body.put("@timestamp", DatatypeConverter.printDateTime(alarmCreationCal));
+			body.put("dow", Integer.toString(alarmCreationCal.get(Calendar.DAY_OF_WEEK)));
+			body.put("hour",Integer.toString(alarmCreationCal.get(Calendar.HOUR_OF_DAY)));
+			body.put("dom", Integer.toString(alarmCreationCal.get(Calendar.DAY_OF_MONTH))); 
+
+			alarmCreationDate = alarmCreationCal.getTime();
 			String completeIndexName=indexNameFunction.apply(rootIndexName, alarmCreationDate);
+
+			if (LOG.isDebugEnabled()){
+				String str = "populateAlarmIndexBodyFromAlarmChangeEvent - index:"
+						+ "/"+completeIndexName
+						+ "/"+indexType
+						+ "/"+id
+						+ "\n   body: ";
+				for (String key:body.keySet()){
+					str=str+"["+ key+" : "+body.get(key)+"]";
+				}
+				LOG.debug(str);
+			}
 
 			index = new Index.Builder(body).index(completeIndexName)
 					.type(indexType).id(id).build();
@@ -433,8 +490,5 @@ public class EventToIndex {
 			}
 		}
 	}
-
-
-
 
 }

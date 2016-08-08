@@ -65,11 +65,11 @@
       <version>${project.version}</version>
     </dependency>
 
-    <!-- <dependency> -->
-    <!-- <groupId>com.googlecode.json-simple</groupId> -->
-    <!-- <artifactId>json-simple</artifactId> -->
-    <!-- <version>${json-simpleVersion}</version> -->
-    <!-- </dependency> -->
+    <dependency>
+    <groupId>com.googlecode.json-simple</groupId>
+    <artifactId>json-simple</artifactId>
+    <version>${json-simpleVersion}</version>
+    </dependency>
 
     <!-- <dependency> -->
     <!-- <groupId>io.searchbox</groupId> -->
