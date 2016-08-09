@@ -47,6 +47,7 @@
     <property name="eventToIndex" ref="eventToIndex" />
     <!-- sets length of event queue for forwarding to ES -->
     <property name="maxQueueLength" value="1000" />
+    <property name="elasticSearchInitialiser" ref="elasticSearchInitialiser" />
   </bean>
 
 
@@ -71,9 +72,21 @@
     <property name="logEventDescription" value="${logEventDescription}" />
     <property name="indexNameFunction" ref="indexNameFunction" />
   </bean>
-  
+
   <bean id="indexNameFunction" class="org.opennms.plugins.elasticsearch.rest.IndexNameFunction">
-    <argument value="yyyy.MM"/>
+    <argument value="yyyy.MM" />
   </bean>
 
+  <bean id="elasticSearchInitialiser" class="org.opennms.plugins.elasticsearch.rest.ElasticSearchInitialiser" init-method="init" destroy-method="destroy">
+    <property name="restClientFactory" ref="restClientFactory" />
+    <property name="templateFiles">
+      <!-- map of template files to load: key = template name (must be lower case) value= json file to load -->
+      <map>
+        
+        <entry key="eventsindextemplate" value="eventsIndexTemplate.json" />
+        <!-- <entry key=”alarmEventsIndexTemplate” value=”alarmEventsIndexTemplate.json” /> -->
+        <!-- <entry key=”alarmsIndexTemplate” value=”alarmsIndexTemplate.json” /> -->
+      </map>
+    </property>
+  </bean>
 </blueprint>
