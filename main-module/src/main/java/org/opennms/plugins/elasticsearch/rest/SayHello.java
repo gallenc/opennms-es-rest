@@ -2,7 +2,7 @@ package org.opennms.plugins.elasticsearch.rest;
 
 /**
  * simple class to print startup message to karaf consol
- * @author admin
+ * @author cgallen
  *
  */
 public class SayHello {

@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
  * queues events received from OpenNMS for forwarding to elastic search. drops
  * events if ES not keeping up and queue has become full.
  * 
- * @author admin
+ * @author cgallen
  *
  */
 public class EventForwarderQueueImpl implements EventForwarder {

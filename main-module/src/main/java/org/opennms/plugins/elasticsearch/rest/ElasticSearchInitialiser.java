@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 /** 
  * Initialises Elastic Search by sending a template
- * @author admin
+ * @author cgallen
  *
  */
 public class ElasticSearchInitialiser {
