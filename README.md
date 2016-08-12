@@ -88,3 +88,27 @@ karaf@root> features:install opennms-es-rest
 (or features:install opennms-es-rest/1.0-SNAPSHOT for a specific version of the feature)
 ~~~~
 
+Example searches to use in Kibana Sense
+~~~~
+GET /opennms-alarms-*/_search
+
+GET opennms-alarms-2016.08/alarmdata/1419
+
+DELETE /opennms-alarms-*/
+
+GET /opennms-events-*/_search
+
+GET /opennms-events-raw*/_search
+
+DELETE /opennms-events-*/
+
+GET opennms-events-alarm*/_search
+
+GET opennms-alarm-events-2016.08/eventdata/9886
+
+
+DELETE /opennms-events-alarm*/
+
+GET /.kibana/_search
+~~~~
+

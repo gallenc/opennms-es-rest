@@ -29,8 +29,8 @@ public class EventToIndex {
 	private static final Logger LOG = LoggerFactory.getLogger(EventToIndex.class);
 
 	public static final String ALARM_INDEX_NAME = "opennms-alarms";
-	public static final String ALARM_EVENT_INDEX_NAME = "opennms-alarm-events";
-	public static final String EVENT_INDEX_NAME = "opennms-events";
+	public static final String ALARM_EVENT_INDEX_NAME = "opennms-events-alarmchange";
+	public static final String EVENT_INDEX_NAME = "opennms-events-raw";
 	public static final String ALARM_INDEX_TYPE = "alarmdata";
 	public static final String EVENT_INDEX_TYPE = "eventdata";
 
