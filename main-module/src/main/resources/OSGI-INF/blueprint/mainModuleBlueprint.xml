@@ -82,11 +82,26 @@
     <property name="templateFiles">
       <!-- map of template files to load: key = template name (must be lower case) value= json file to load -->
       <map>
-        
+
         <entry key="eventsindextemplate" value="eventsIndexTemplate.json" />
         <!-- <entry key=”alarmEventsIndexTemplate” value=”alarmEventsIndexTemplate.json” /> -->
         <!-- <entry key=”alarmsIndexTemplate” value=”alarmsIndexTemplate.json” /> -->
       </map>
     </property>
   </bean>
+
+  <bean id="openNMSHistoricEventsToEs" class="org.opennms.plugins.elasticsearch.rest.archive.OpenNMSHistoricEventsToEs">
+    <property name="eventForwarder" ref="eventForwarder" />
+  </bean>
+
+  <!-- command line commands -->
+  <command-bundle xmlns="http://karaf.apache.org/xmlns/shell/v1.0.0">
+
+    <!-- send events to elastic search -->
+    <command name="elastic-search/send-historic-events">
+      <action class="org.opennms.plugins.elasticsearch.rest.archive.cmd.SendEventsToEsCommand">
+        <property name="openNMSHistoricEventsToEs" ref="openNMSHistoricEventsToEs" />
+      </action>
+    </command>
+  </command-bundle>
 </blueprint>

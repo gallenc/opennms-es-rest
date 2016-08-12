@@ -26,7 +26,7 @@
  *     http://www.opennms.com/
  *******************************************************************************/
 
-package org.opennms.plugins.elasticsearch.rest.archive.manual;
+package org.opennms.plugins.elasticsearch.rest.archive;
 
 import java.util.Collection;
 import java.util.List;
