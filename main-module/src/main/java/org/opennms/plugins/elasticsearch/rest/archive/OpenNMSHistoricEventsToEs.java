@@ -1,10 +1,13 @@
 package org.opennms.plugins.elasticsearch.rest.archive;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 
 import org.opennms.netmgt.events.api.EventForwarder;
 import org.opennms.plugins.elasticsearch.rest.archive.OnmsRestEventsClient;
 import org.opennms.netmgt.xml.event.Event;
+import org.opennms.netmgt.xml.event.Parm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +34,8 @@ public class OpenNMSHistoricEventsToEs {
 	private Integer offset=0;
 
 	private EventForwarder eventForwarder=null;
+	
+	private boolean useNodeLabel=true;
 
 	public String getOnmsUrl() {
 		return onmsUrl;
@@ -79,6 +84,15 @@ public class OpenNMSHistoricEventsToEs {
 	public void setOffset(Integer offset) {
 		this.offset = offset;
 	}
+	
+	public boolean getUseNodeLabel() {
+		return useNodeLabel;
+	}
+
+	public void setUseNodeLabel(boolean useCache) {
+		this.useNodeLabel = useCache;
+	}
+	
 
 	public OpenNMSHistoricEventsToEs(){
 		super();
@@ -112,6 +126,19 @@ public class OpenNMSHistoricEventsToEs {
 				if(firstEvent==null) firstEvent=event;
 				lastEvent=event;
 				eventsSent++;
+				
+				// remove node label param if included in event
+				if (! useNodeLabel){
+					List<Parm> parmCollection = event.getParmCollection();
+					ListIterator<Parm> iter = parmCollection.listIterator();
+					while(iter.hasNext()){
+					    if(XmlOnmsEvent.NODE_LABEL.equals(iter.next().getParmName())){
+					        iter.remove();
+					    }
+					}
+					
+				}
+				
 				LOG.debug("sending event to es: eventid="+event.getDbid());
 				getEventForwarder().sendNow(event);
 			}
@@ -123,6 +150,8 @@ public class OpenNMSHistoricEventsToEs {
 		return "Sent "+eventsSent
 				+ " events to Elastic Search. First event id="+firstEvent.getDbid()+ " last event id="+lastEvent.getDbid();
 	}
+
+
 
 
 

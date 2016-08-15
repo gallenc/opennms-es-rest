@@ -51,6 +51,8 @@ public class EventToIndex {
 	public static final String OLD_ALARM_VALUES="oldalarmvalues";
 	public static final String NEW_ALARM_VALUES="newalarmvalues";
 
+	public static final String NODE_LABEL="nodelabel";
+
 	private boolean logEventDescription=false;
 	private NodeCache nodeCache=null;
 	private String elasticsearchCluster="opennms";
@@ -288,9 +290,12 @@ public class EventToIndex {
 		}
 
 		body.put("host",event.getHost());
+
+		//get params from event
 		for(Parm parm : event.getParmCollection()) {
 			body.put("p_" + parm.getParmName(), parm.getValue().getContent());
 		}
+
 		body.put("interface", event.getInterface());
 		body.put("logmsg", ( event.getLogmsg()!=null ? event.getLogmsg().getContent() : null ));
 		body.put("logmsgdest", ( event.getLogmsg()!=null ? event.getLogmsg().getDest() : null ));
@@ -298,13 +303,18 @@ public class EventToIndex {
 		if(event.getNodeid()!=null){
 			body.put("nodeid", Long.toString(event.getNodeid()));
 
-			// add node details
-			if (nodeCache!=null){
-				Map nodedetails = nodeCache.getEntry(event.getNodeid());
-				for (Object key: nodedetails.keySet()){
-					String keyStr = (String) key;
-					String value = (String) nodedetails.get(key);
-					body.put(keyStr, value);
+			// if the event contains nodelabel parameter then do not use node cache
+			if(body.containsKey("p_"+NODE_LABEL)){
+				body.put(NODE_LABEL,body.get("p_"+NODE_LABEL));
+			} else {
+				// add node details from cache
+				if (nodeCache!=null){
+					Map nodedetails = nodeCache.getEntry(event.getNodeid());
+					for (Object key: nodedetails.keySet()){
+						String keyStr = (String) key;
+						String value = (String) nodedetails.get(key);
+						body.put(keyStr, value);
+					}
 				}
 			}
 		}
@@ -350,7 +360,7 @@ public class EventToIndex {
 
 		String oldValuesStr=parmsMap.get(OLD_ALARM_VALUES);
 		String newValuesStr=parmsMap.get(NEW_ALARM_VALUES);
-		
+
 		LOG.debug("AlarmChangeEvent from eventid "+event.getDbid()
 				+ "\n  newValuesStr="+newValuesStr
 				+ "\n  oldValuesStr="+oldValuesStr);
@@ -369,14 +379,14 @@ public class EventToIndex {
 						+ " to json object. newValuesStr="+ newValuesStr, e1);
 			}
 		}
-		
+
 		if(newAlarmValues!=null && ! newAlarmValues.isEmpty()) {
 			alarmValues=newAlarmValues;
 		} else {
 			if (oldValuesStr==null){
 				LOG.error("newValuesStr and oldValuesStr both empty in AlarmChangeEvent from eventid "+event.getDbid()
-				+ "\n  newValuesStr="+newValuesStr
-				+ "\n  oldValuesStr="+oldValuesStr);
+						+ "\n  newValuesStr="+newValuesStr
+						+ "\n  oldValuesStr="+oldValuesStr);
 				return null;
 			} else {
 				try{
@@ -415,13 +425,18 @@ public class EventToIndex {
 
 		}
 
-		// add node details
-		if (nodeCache!=null && event.getNodeid()!=null){
-			Map nodedetails = nodeCache.getEntry(event.getNodeid());
-			for (Object key: nodedetails.keySet()){
-				String keyStr = (String) key;
-				String value = (String) nodedetails.get(key);
-				body.put(keyStr, value);
+		// if the event contains nodelabel parameter then do not use node cache
+		if (parmsMap.get(NODE_LABEL)!=null){
+			body.put(NODE_LABEL, parmsMap.get(NODE_LABEL));
+		} else {
+			// add node details from cache
+			if (nodeCache!=null && event.getNodeid()!=null){
+				Map nodedetails = nodeCache.getEntry(event.getNodeid());
+				for (Object key: nodedetails.keySet()){
+					String keyStr = (String) key;
+					String value = (String) nodedetails.get(key);
+					body.put(keyStr, value);
+				}
 			}
 		}
 

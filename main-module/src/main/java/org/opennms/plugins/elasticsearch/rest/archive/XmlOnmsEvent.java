@@ -60,7 +60,7 @@ import org.opennms.netmgt.xml.event.Value;
 @XmlRootElement(name="event")
 public class XmlOnmsEvent  implements Serializable {
 
-
+	public static final String NODE_LABEL="nodelabel";
 
 	/**
 	 * 
@@ -903,10 +903,9 @@ public class XmlOnmsEvent  implements Serializable {
 		if (this.getEventDescr() !=null ) event.setDescr(this.getEventDescr());
 		if (this.getEventHost()!=null ) event.setHost(this.getEventHost());
 		
+		List<Parm> parmColl=new ArrayList<Parm>();
 		if (this.getEventParameters()!=null) {
 			List<OnmsEventParameter> params = this.getEventParameters();
-			
-			List<Parm> parmColl=new ArrayList<Parm>();
 			
 			for(OnmsEventParameter onmsEventParameter:params){
 				
@@ -923,8 +922,21 @@ public class XmlOnmsEvent  implements Serializable {
 				
 				parmColl.add(parm);
 			}
-			event.setParmCollection(parmColl);
+			
 		}
+		
+		// add node label as param
+		if ( this.getNodeLabel()!=null){
+			Parm parm = new Parm();
+			parm.setParmName(NODE_LABEL);
+			Value parmValue = new Value();
+			parm.setValue(parmValue);
+			parmValue.setType("string");
+			parmValue.setEncoding("text");
+			parmValue.setContent(this.getNodeLabel());
+			parmColl.add(parm);
+		}
+		event.setParmCollection(parmColl);
 			
 		//event.getInterface(this.getI)
 
