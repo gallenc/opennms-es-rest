@@ -52,6 +52,7 @@ public class EventToIndex {
 	public static final String NEW_ALARM_VALUES="newalarmvalues";
 
 	public static final String NODE_LABEL="nodelabel";
+	public static final String INITIAL_SEVERITY="initialseverity";
 
 	private boolean logEventDescription=false;
 	private NodeCache nodeCache=null;
@@ -361,7 +362,7 @@ public class EventToIndex {
 		String oldValuesStr=parmsMap.get(OLD_ALARM_VALUES);
 		String newValuesStr=parmsMap.get(NEW_ALARM_VALUES);
 
-		LOG.debug("AlarmChangeEvent from eventid "+event.getDbid()
+		if (LOG.isDebugEnabled()) LOG.debug("AlarmChangeEvent from eventid "+event.getDbid()
 				+ "\n  newValuesStr="+newValuesStr
 				+ "\n  oldValuesStr="+oldValuesStr);
 
@@ -423,6 +424,11 @@ public class EventToIndex {
 				body.put(key, value);
 			}
 
+		}
+		
+		// add "initialseverity"
+		if(parmsMap.get(INITIAL_SEVERITY)!=null){
+			body.put(INITIAL_SEVERITY,parmsMap.get(INITIAL_SEVERITY));
 		}
 
 		// if the event contains nodelabel parameter then do not use node cache

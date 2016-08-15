@@ -198,7 +198,7 @@ public class ElasticSearchInitialiser {
 									+ "\n   response code:" +jestResult.getResponseCode() 
 									+ "\n   error message: "+jestResult.getErrorMessage());
 						} else {
-							LOG.debug("Sent template '"+templateName+"' to Elastic Search"
+							LOG.info("Sent template '"+templateName+"' to Elastic Search"
 									+ " received result: "+jestResult.getJsonString()
 									+ "\n   response code:" +jestResult.getResponseCode() 
 									+ "\n   error message: "+jestResult.getErrorMessage());
