@@ -3,6 +3,7 @@ package org.opennms.plugins.elasticsearch.rest;
 import io.searchbox.client.JestClient;
 import io.searchbox.core.DocumentResult;
 import io.searchbox.core.Index;
+import io.searchbox.core.Update;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -53,9 +54,17 @@ public class EventToIndex {
 
 	public static final String NODE_LABEL="nodelabel";
 	public static final String INITIAL_SEVERITY="initialseverity";
+	public static final String INITIAL_SEVERITY_TEXT="initialseverity_text";
+	public static final String SEVERITY_TEXT="severity_text";
+	public static final String SEVERITY="severity";
+	public static final String EVENT_PARAMS="eventparms";
+	public static final String ALARM_ACK_TIME="alarmacktime";
+	public static final String ALARM_ACK_USER="alarmackuser";
+
 
 	private boolean logEventDescription=false;
 	private NodeCache nodeCache=null;
+
 	private String elasticsearchCluster="opennms";
 
 	private JestClient jestClient = null;
@@ -96,16 +105,12 @@ public class EventToIndex {
 		this.restClientFactory = restClientFactory;
 	}
 
-	/**
-	 * @return the elasticsearchCluster
-	 */
+
 	public String getElasticsearchCluster() {
 		return elasticsearchCluster;
 	}
 
-	/**
-	 * @param elasticsearchCluster the elasticsearchCluster to set
-	 */
+
 	public void setElasticsearchCluster(String elasticsearchCluster) {
 		this.elasticsearchCluster = elasticsearchCluster;
 	}
@@ -147,7 +152,7 @@ public class EventToIndex {
 			// handling uei definitions of alarm change events
 
 			String uei=event.getUei();
-			Index alarmIndex=null;
+			Update alarmUpdate=null;
 			Index eventIndex=null;
 			DocumentResult alarmIndexresult=null;
 			DocumentResult eventIndexresult=null;
@@ -185,9 +190,9 @@ public class EventToIndex {
 
 				}
 
-				alarmIndex = populateAlarmIndexBodyFromAlarmChangeEvent(event, ALARM_INDEX_NAME, ALARM_INDEX_TYPE);
-				if (alarmIndex!=null){
-					alarmIndexresult = getJestClient().execute(alarmIndex);
+				alarmUpdate = populateAlarmIndexBodyFromAlarmChangeEvent(event, ALARM_INDEX_NAME, ALARM_INDEX_TYPE);
+				if (alarmUpdate!=null){
+					alarmIndexresult = getJestClient().execute(alarmUpdate);
 				}
 
 				if(LOG.isDebugEnabled()) {
@@ -338,6 +343,8 @@ public class EventToIndex {
 				.type(indexType).id(id).build();
 
 		return index;
+
+
 	}
 
 	/**
@@ -349,7 +356,7 @@ public class EventToIndex {
 	 * @param body
 	 * @param event
 	 */
-	public Index populateAlarmIndexBodyFromAlarmChangeEvent(Event event, String rootIndexName, String indexType) {
+	public Update populateAlarmIndexBodyFromAlarmChangeEvent(Event event, String rootIndexName, String indexType) {
 
 		Map<String,String> body = new HashMap<String,String>();
 
@@ -414,21 +421,46 @@ public class EventToIndex {
 			String key=(String) x;
 			String value = (alarmValues.get(key)==null) ? null : alarmValues.get(key).toString();
 
-			if ("eventparms".equals(key) && value!=null){
+			if (EVENT_PARAMS.equals(key) && value!=null){
 				//decode event parms into alarm record
 				List<Parm> params = EventParameterUtils.decode(value);
 				for(Parm parm : params) {
 					body.put("p_" + parm.getParmName(), parm.getValue().getContent());
+				}
+			} else if((SEVERITY.equals(key) && value!=null)){ 
+				try{
+					int id= Integer.parseInt(value);
+					String label = OnmsSeverity.get(id).getLabel();
+					body.put(SEVERITY_TEXT,label);
+				}
+				catch (Exception e){
+					LOG.error("cannot parse initial severity for alarm change event id"+event.getDbid());
 				}
 			} else{
 				body.put(key, value);
 			}
 
 		}
-		
+
+		// remove ack if not in parameters 
+		if(parmsMap.get(ALARM_ACK_TIME)==null || "".equals(parmsMap.get(ALARM_ACK_TIME)) ){
+			body.put(ALARM_ACK_TIME, null);
+			body.put(ALARM_ACK_USER, null);
+		}
+
 		// add "initialseverity"
 		if(parmsMap.get(INITIAL_SEVERITY)!=null){
-			body.put(INITIAL_SEVERITY,parmsMap.get(INITIAL_SEVERITY));
+			String severityId = parmsMap.get(INITIAL_SEVERITY);
+			body.put(INITIAL_SEVERITY,severityId);
+
+			try{
+				int id= Integer.parseInt(severityId);
+				String label = OnmsSeverity.get(id).getLabel();
+				body.put(INITIAL_SEVERITY_TEXT,label);
+			}
+			catch (Exception e){
+				LOG.error("cannot parse initial severity for alarm change event id"+event.getDbid());
+			}
 		}
 
 		// if the event contains nodelabel parameter then do not use node cache
@@ -446,7 +478,7 @@ public class EventToIndex {
 			}
 		}
 
-		Index index=null;
+		Update update=null;
 
 		if (alarmValues.get("alarmid")==null){
 			LOG.error("No alarmid param - cannot create alarm elastic search record from event content:"+ event.toString());
@@ -491,11 +523,25 @@ public class EventToIndex {
 				LOG.debug(str);
 			}
 
-			index = new Index.Builder(body).index(completeIndexName)
+			//index = new Index.Builder(body).index(completeIndexName)
+			//		.type(indexType).id(id).build();
+
+			// generates an update for specific values
+			// see https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-update.html
+			JSONObject doc= new JSONObject(body);
+			JSONObject updateQuery= new JSONObject();
+			updateQuery.put("doc", doc);
+			updateQuery.put("doc_as_upsert", true);
+
+
+			if (LOG.isDebugEnabled())LOG.debug("update query sent:"+updateQuery.toJSONString());
+
+			update= new Update.Builder(updateQuery.toJSONString()).index(completeIndexName)
 					.type(indexType).id(id).build();
+
 		}
 
-		return index;
+		return update;
 	}
 
 	private void maybeRefreshCache(Event event) {
