@@ -42,6 +42,7 @@ public class EventToIndex {
 	public static final String ALARM_DELETED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmDeleted";
 	public static final String ALARM_CREATED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/NewAlarmCreated";
 	public static final String ALARM_SEVERITY_CHANGED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmSeverityChanged";
+	public static final String ALARM_CLEARED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmCleared";
 	public static final String ALARM_ACKNOWLEDGED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmAcknowledged";
 	public static final String ALARM_UNACKNOWLEDGED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmUnAcknowledged";
 	public static final String ALARM_SUPPRESSED_EVENT = "uei.opennms.org/plugin/AlarmChangeNotificationEvent/AlarmSuppressed";
@@ -60,7 +61,8 @@ public class EventToIndex {
 	public static final String EVENT_PARAMS="eventparms";
 	public static final String ALARM_ACK_TIME="alarmacktime";
 	public static final String ALARM_ACK_USER="alarmackuser";
-
+	public static final String ALARM_CLEAR_TIME="alarmcleartime";
+	public static final String ALARM_DELETED_TIME="alarmdeletedtime";
 
 	private boolean logEventDescription=false;
 	private NodeCache nodeCache=null;
@@ -169,6 +171,9 @@ public class EventToIndex {
 
 				} else if (ALARM_SEVERITY_CHANGED_EVENT.equals(uei)){
 					if (LOG.isDebugEnabled()) LOG.debug("Sending Alarm Changed Severity Event to ES:"+event.toString());
+					
+				} else if (ALARM_CLEARED_EVENT.equals(uei)){
+					if (LOG.isDebugEnabled()) LOG.debug("Sending Alarm Cleared Event to ES:"+event.toString());
 
 				} else if (ALARM_ACKNOWLEDGED_EVENT.equals(uei)){
 					if (LOG.isDebugEnabled()) LOG.debug("Sending Alarm Acknowledged Event to ES:"+event.toString());
@@ -224,7 +229,6 @@ public class EventToIndex {
 			} else {
 
 				// only send events to ES which are persisted to database
-
 				if(event.getDbid()!=null && event.getDbid()!=0) {
 					if (LOG.isDebugEnabled()) LOG.debug("Sending Event to ES:"+event.toString());
 					// Send the event to the event forwarder
@@ -358,8 +362,10 @@ public class EventToIndex {
 	 */
 	public Update populateAlarmIndexBodyFromAlarmChangeEvent(Event event, String rootIndexName, String indexType) {
 
-		Map<String,String> body = new HashMap<String,String>();
+		Update update=null;
 
+		Map<String,String> body = new HashMap<String,String>();
+		
 		//get alarm change params from event
 		Map<String,String> parmsMap = new HashMap<String,String>();
 		for(Parm parm : event.getParmCollection()) {
@@ -434,15 +440,30 @@ public class EventToIndex {
 					body.put(SEVERITY_TEXT,label);
 				}
 				catch (Exception e){
-					LOG.error("cannot parse initial severity for alarm change event id"+event.getDbid());
+					LOG.error("cannot parse severity for alarm change event id"+event.getDbid());
 				}
 			} else{
 				body.put(key, value);
 			}
 
 		}
+		
+		// set alarm cleared time if an alarm clear event
+		if(ALARM_CLEARED_EVENT.equals(event.getUei())){
+			Calendar alarmClearCal=Calendar.getInstance();
+			alarmClearCal.setTime(event.getCreationTime());
+			body.put(ALARM_CLEAR_TIME, DatatypeConverter.printDateTime(alarmClearCal));
+		}
+		
+		// set alarm deleted time if an alarm clear event
+		if(ALARM_DELETED_EVENT.equals(event.getUei())){
+			Calendar alarmDeletionCal=Calendar.getInstance();
+			alarmDeletionCal.setTime(event.getCreationTime());
+			body.put(ALARM_DELETED_TIME, DatatypeConverter.printDateTime(alarmDeletionCal));
+		}
 
-		// remove ack if not in parameters 
+
+		// remove ack if not in parameters i,e alarm not acknowleged
 		if(parmsMap.get(ALARM_ACK_TIME)==null || "".equals(parmsMap.get(ALARM_ACK_TIME)) ){
 			body.put(ALARM_ACK_TIME, null);
 			body.put(ALARM_ACK_USER, null);
@@ -478,12 +499,14 @@ public class EventToIndex {
 			}
 		}
 
-		Update update=null;
 
 		if (alarmValues.get("alarmid")==null){
 			LOG.error("No alarmid param - cannot create alarm elastic search record from event content:"+ event.toString());
 		} else{
 			String id = alarmValues.get("alarmid").toString();
+			
+			// add the p_alarmid so that we can easily match alarm change events with same alarmid
+			body.put("p_alarmid", id);
 
 			String alarmCreationTime=null;
 			Date alarmCreationDate=null;
