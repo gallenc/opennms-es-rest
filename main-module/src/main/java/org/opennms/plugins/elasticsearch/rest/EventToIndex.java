@@ -65,9 +65,18 @@ public class EventToIndex {
 	public static final String ALARM_DELETED_TIME="alarmdeletedtime";
 
 	private boolean logEventDescription=false;
-	private NodeCache nodeCache=null;
 
-	private String elasticsearchCluster="opennms";
+	private boolean archiveRawEvents=true;
+
+	private boolean archiveAlarms=true;
+
+	private boolean archiveAlarmChangeEvents=true;
+	
+	private boolean archiveOldAlarmValues=true;
+	
+	private boolean archiveNewAlarmValues=true;
+
+	private NodeCache nodeCache=null;
 
 	private JestClient jestClient = null;
 
@@ -107,15 +116,47 @@ public class EventToIndex {
 		this.restClientFactory = restClientFactory;
 	}
 
+	public boolean getArchiveAlarms() {
+		return archiveAlarms;
+	}
 
-	public String getElasticsearchCluster() {
-		return elasticsearchCluster;
+	public void setArchiveAlarms(boolean archiveAlarms) {
+		this.archiveAlarms = archiveAlarms;
+	}
+
+	public boolean getArchiveAlarmChangeEvents() {
+		return archiveAlarmChangeEvents;
+	}
+
+	public void setArchiveAlarmChangeEvents(boolean archiveAlarmChangeEvents) {
+		this.archiveAlarmChangeEvents = archiveAlarmChangeEvents;
+	}
+
+	public boolean getArchiveRawEvents() {
+		return archiveRawEvents;
+	}
+
+	public void setArchiveRawEvents(boolean archiveRawEvents) {
+		this.archiveRawEvents = archiveRawEvents;
+	}
+	
+	public boolean getArchiveOldAlarmValues() {
+		return archiveOldAlarmValues;
+	}
+
+	public void setArchiveOldAlarmValues(boolean archiveOldAlarmValues) {
+		this.archiveOldAlarmValues = archiveOldAlarmValues;
+	}
+
+	public boolean getArchiveNewAlarmValues() {
+		return archiveNewAlarmValues;
+	}
+
+	public void setArchiveNewAlarmValues(boolean archiveNewAlarmValues) {
+		this.archiveNewAlarmValues = archiveNewAlarmValues;
 	}
 
 
-	public void setElasticsearchCluster(String elasticsearchCluster) {
-		this.elasticsearchCluster = elasticsearchCluster;
-	}
 
 	/**
 	 * returns a singleton jest client from factory for use by this class
@@ -171,7 +212,7 @@ public class EventToIndex {
 
 				} else if (ALARM_SEVERITY_CHANGED_EVENT.equals(uei)){
 					if (LOG.isDebugEnabled()) LOG.debug("Sending Alarm Changed Severity Event to ES:"+event.toString());
-					
+
 				} else if (ALARM_CLEARED_EVENT.equals(uei)){
 					if (LOG.isDebugEnabled()) LOG.debug("Sending Alarm Cleared Event to ES:"+event.toString());
 
@@ -195,60 +236,65 @@ public class EventToIndex {
 
 				}
 
-				alarmUpdate = populateAlarmIndexBodyFromAlarmChangeEvent(event, ALARM_INDEX_NAME, ALARM_INDEX_TYPE);
-				if (alarmUpdate!=null){
-					alarmIndexresult = getJestClient().execute(alarmUpdate);
-				}
+				if(archiveAlarms){
+					alarmUpdate = populateAlarmIndexBodyFromAlarmChangeEvent(event, ALARM_INDEX_NAME, ALARM_INDEX_TYPE);
+					if (alarmUpdate!=null){
+						alarmIndexresult = getJestClient().execute(alarmUpdate);
+					}
 
-				if(LOG.isDebugEnabled()) {
-					if (alarmIndexresult==null) {
-						LOG.debug("returned result==null");
-					} else{
-						LOG.debug("Alarm sent to es index:"+ALARM_INDEX_NAME+" type:"+ ALARM_INDEX_TYPE
-								+ "\n   received search result: "+alarmIndexresult.getJsonString()
-								+ "\n   response code:" +alarmIndexresult.getResponseCode() 
-								+ "\n   error message: "+alarmIndexresult.getErrorMessage());
+					if(LOG.isDebugEnabled()) {
+						if (alarmIndexresult==null) {
+							LOG.debug("returned result==null");
+						} else{
+							LOG.debug("Alarm sent to es index:"+ALARM_INDEX_NAME+" type:"+ ALARM_INDEX_TYPE
+									+ "\n   received search result: "+alarmIndexresult.getJsonString()
+									+ "\n   response code:" +alarmIndexresult.getResponseCode() 
+									+ "\n   error message: "+alarmIndexresult.getErrorMessage());
+						}
 					}
 				}
 
-				eventIndex = populateEventIndexBodyFromEvent(event, ALARM_EVENT_INDEX_NAME, EVENT_INDEX_TYPE);
-				eventIndexresult = getJestClient().execute(eventIndex);
+				if(archiveAlarmChangeEvents){
+					eventIndex = populateEventIndexBodyFromEvent(event, ALARM_EVENT_INDEX_NAME, EVENT_INDEX_TYPE);
+					eventIndexresult = getJestClient().execute(eventIndex);
 
-				if(LOG.isDebugEnabled()) {
-					if (alarmIndexresult==null) {
-						LOG.debug("returned result==null");
-					} else{
-						LOG.debug("Event sent to es index:"+ALARM_EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE
-								+ "\n   received search result: "+eventIndexresult.getJsonString()
-								+ "\n   response code:" +eventIndexresult.getResponseCode() 
-								+ "\n   error message: "+eventIndexresult.getErrorMessage());
+					if(LOG.isDebugEnabled()) {
+						if (alarmIndexresult==null) {
+							LOG.debug("returned result==null");
+						} else{
+							LOG.debug("Event sent to es index:"+ALARM_EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE
+									+ "\n   received search result: "+eventIndexresult.getJsonString()
+									+ "\n   response code:" +eventIndexresult.getResponseCode() 
+									+ "\n   error message: "+eventIndexresult.getErrorMessage());
+						}
 					}
 				}
 
 				// else handle all other event types
 			} else {
 
-				// only send events to ES which are persisted to database
-				if(event.getDbid()!=null && event.getDbid()!=0) {
-					if (LOG.isDebugEnabled()) LOG.debug("Sending Event to ES:"+event.toString());
-					// Send the event to the event forwarder
-					eventIndex = populateEventIndexBodyFromEvent(event, EVENT_INDEX_NAME, EVENT_INDEX_TYPE);
-					eventIndexresult = getJestClient().execute(eventIndex);
+				if(archiveRawEvents){
+					// only send events to ES which are persisted to database
+					if(event.getDbid()!=null && event.getDbid()!=0) {
+						if (LOG.isDebugEnabled()) LOG.debug("Sending Event to ES:"+event.toString());
+						// Send the event to the event forwarder
+						eventIndex = populateEventIndexBodyFromEvent(event, EVENT_INDEX_NAME, EVENT_INDEX_TYPE);
+						eventIndexresult = getJestClient().execute(eventIndex);
 
-					if(LOG.isDebugEnabled()) {
-						if (eventIndexresult==null) {
-							LOG.debug("returned result==null");
-						} else{
-							LOG.debug("Event sent to es index:"+EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE
-									+ "\n   received search result: "+eventIndexresult.getJsonString()
-									+ "\n   response code:" +eventIndexresult.getResponseCode() 
-									+ "\n   error message: "+eventIndexresult.getErrorMessage());
+						if(LOG.isDebugEnabled()) {
+							if (eventIndexresult==null) {
+								LOG.debug("returned result==null");
+							} else{
+								LOG.debug("Event sent to es index:"+EVENT_INDEX_NAME+" type:"+ EVENT_INDEX_TYPE
+										+ "\n   received search result: "+eventIndexresult.getJsonString()
+										+ "\n   response code:" +eventIndexresult.getResponseCode() 
+										+ "\n   error message: "+eventIndexresult.getErrorMessage());
+							}
 						}
+
+					} else {
+						if (LOG.isDebugEnabled()) LOG.debug("Not Sending Event to ES: null event.getDbid()="+event.getDbid()+ " Event="+event.toString());
 					}
-
-
-				} else {
-					if (LOG.isDebugEnabled()) LOG.debug("Not Sending Event to ES: event.getDbid()="+event.getDbid()+ " Event="+event.toString());
 				}
 
 			}
@@ -304,6 +350,15 @@ public class EventToIndex {
 		//get params from event
 		for(Parm parm : event.getParmCollection()) {
 			body.put("p_" + parm.getParmName(), parm.getValue().getContent());
+		}
+		
+		// remove old and new alarm values parms if not needed
+		if(! archiveNewAlarmValues){
+			body.remove("p_"+OLD_ALARM_VALUES);
+		}
+		
+		if(! archiveOldAlarmValues){
+			body.remove("p_"+NEW_ALARM_VALUES);
 		}
 
 		body.put("interface", event.getInterface());
@@ -365,7 +420,7 @@ public class EventToIndex {
 		Update update=null;
 
 		Map<String,String> body = new HashMap<String,String>();
-		
+
 		//get alarm change params from event
 		Map<String,String> parmsMap = new HashMap<String,String>();
 		for(Parm parm : event.getParmCollection()) {
@@ -447,14 +502,14 @@ public class EventToIndex {
 			}
 
 		}
-		
+
 		// set alarm cleared time if an alarm clear event
 		if(ALARM_CLEARED_EVENT.equals(event.getUei())){
 			Calendar alarmClearCal=Calendar.getInstance();
 			alarmClearCal.setTime(event.getCreationTime());
 			body.put(ALARM_CLEAR_TIME, DatatypeConverter.printDateTime(alarmClearCal));
 		}
-		
+
 		// set alarm deleted time if an alarm clear event
 		if(ALARM_DELETED_EVENT.equals(event.getUei())){
 			Calendar alarmDeletionCal=Calendar.getInstance();
@@ -504,7 +559,7 @@ public class EventToIndex {
 			LOG.error("No alarmid param - cannot create alarm elastic search record from event content:"+ event.toString());
 		} else{
 			String id = alarmValues.get("alarmid").toString();
-			
+
 			// add the p_alarmid so that we can easily match alarm change events with same alarmid
 			body.put("p_alarmid", id);
 
@@ -556,7 +611,6 @@ public class EventToIndex {
 			updateQuery.put("doc", doc);
 			updateQuery.put("doc_as_upsert", true);
 
-
 			if (LOG.isDebugEnabled())LOG.debug("update query sent:"+updateQuery.toJSONString());
 
 			update= new Update.Builder(updateQuery.toJSONString()).index(completeIndexName)
@@ -580,5 +634,7 @@ public class EventToIndex {
 			}
 		}
 	}
+
+
 
 }

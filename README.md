@@ -94,7 +94,7 @@ GET /opennms-alarms-*/_search
 
 GET /opennms-alarms-*/
 
-GET opennms-alarms-2016.08/alarmdata/1769
+GET opennms-alarms-2016.08/alarmdata/1823
 
 DELETE /opennms-alarms-*/
 
@@ -106,9 +106,9 @@ DELETE /opennms-events-*/
 
 GET /opennms-events-raw*/
 
-GET /opennms-events-alarmchange*/
+GET /opennms-events-alarmchange-*/
 
-GET opennms-events-alarmchange*/_search
+GET opennms-events-alarmchange-*/_search
 
 GET opennms-events-alarmchange-2016.08/eventdata/11549
 
@@ -127,6 +127,20 @@ DELETE _template/eventsindextemplate
 
 
 GET /opennms-alarms-*/
+
+GET /opennms-alarms-*/_search
+
+GET /opennms-alarms-*/_search
+{
+    "script_fields" : {
+        "alarm-duration" : {
+            "script" : "doc['alarmcleartime'].value - doc['firsteventtime'].value"
+        }
+    }
+        
+    
+}
+
 
 ~~~~
 
